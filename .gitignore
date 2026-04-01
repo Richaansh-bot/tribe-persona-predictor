@@ -149,3 +149,6 @@ frontend/node_modules/.cache/
 *.json
 data/
 models/checkpoints/
+uploads/
+tribev2_env/
+cache/
