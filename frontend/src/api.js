@@ -65,9 +65,12 @@ class ApiClient {
     formData.append('file', file);
     formData.append('persona', persona);
 
-    // Use XMLHttpRequest for progress tracking
+    // Use XMLHttpRequest for progress tracking with longer timeout
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+      
+      // Set timeout to 15 minutes (TRIBE v2 processing can take time)
+      xhr.timeout = 900000; // 15 minutes
       
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && onProgress) {
@@ -87,9 +90,9 @@ class ApiClient {
         } else {
           try {
             const error = JSON.parse(xhr.responseText);
-            reject(new Error(error.detail || `Upload failed: ${xhr.status}`));
+            reject(new Error(error.detail || `Analysis failed: ${xhr.status}`));
           } catch (e) {
-            reject(new Error(`Upload failed: ${xhr.status}`));
+            reject(new Error(`Analysis failed: ${xhr.status}`));
           }
         }
       });
@@ -102,11 +105,15 @@ class ApiClient {
         reject(new Error('Upload cancelled'));
       });
 
+      xhr.addEventListener('timeout', () => {
+        reject(new Error('Analysis timed out. Video may be too long or TRIBE v2 processing is taking too long.'));
+      });
+
       // Start the request
       xhr.open('POST', `${this.baseUrl}/api/analyze/video`);
       
       if (onProgress) {
-        onProgress({ stage: 'processing', percent: 0 });
+        onProgress({ stage: 'processing', percent: 50 });
       }
 
       xhr.send(formData);

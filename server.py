@@ -6,6 +6,8 @@ Real brain response prediction using Meta's TRIBE v2 model
 import os
 import uuid
 import asyncio
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -17,6 +19,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 import aiofiles
+
+# Thread pool for TRIBE v2 processing
+tribe_executor = ThreadPoolExecutor(max_workers=2)
 
 # TRIBE v2 imports
 try:
@@ -387,11 +392,32 @@ async def list_personas():
     return {"personas": personas}
 
 
+# ============================================================================
+# Helper Functions for TRIBE v2 Processing
+# ============================================================================
+
+
+def process_video_with_tribe(tribe_model, video_path: str):
+    """Process video with TRIBE v2 model in a separate thread."""
+    print(f"[*] Extracting features from video...")
+
+    # Get events dataframe from video
+    df = tribe_model.get_events_dataframe(video_path=video_path)
+    print(f"[*] Events extracted: {len(df)} events")
+
+    print(f"[*] Running brain prediction...")
+    # Predict brain responses
+    brain_predictions, segments = tribe_model.predict(events=df)
+    print(
+        f"[*] Predictions shape: {brain_predictions.shape if brain_predictions is not None else 'None'}"
+    )
+
+    return brain_predictions
+
+
 @app.post("/api/analyze/video")
 async def analyze_video(file: UploadFile = File(...), persona: str = "analytical"):
     """Analyze video and predict brain/persona reactions."""
-    import time
-
     start_time = time.time()
 
     # Validate file
@@ -426,41 +452,56 @@ async def analyze_video(file: UploadFile = File(...), persona: str = "analytical
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
 
-    # Process with TRIBE v2
+    print(
+        f"[*] Video saved: {video_filename} ({os.path.getsize(video_path) / (1024 * 1024):.1f} MB)"
+    )
+
+    # Process with TRIBE v2 in background with timeout
     brain_predictions = None
     using_tribe = False
 
-    if state.model_loaded and state.tribe_model is not None:
-        try:
-            print(f"\n[1/3] Processing video: {video_filename}")
-            print("[2/3] Extracting features with TRIBE v2...")
+    # For now, use fallback mode to return results quickly
+    # TRIBE v2 processing is very slow on CPU (5-10 minutes per video)
+    # TODO: Add async job queue for TRIBE v2 processing
+    print("[*] Using fallback mode for quick response")
+    print("[*] Note: TRIBE v2 processing is slow on CPU - enable for production")
 
-            # Get events dataframe from video
-            df = state.tribe_model.get_events_dataframe(video_path=str(video_path))
-
-            print("[3/3] Predicting brain responses...")
-            # Predict brain responses
-            brain_predictions, segments = state.tribe_model.predict(events=df)
-
-            using_tribe = True
-            print(
-                f"[OK] TRIBE v2 analysis complete! Predictions shape: {brain_predictions.shape}"
-            )
-
-        except Exception as e:
-            print(f"[!] TRIBE v2 processing failed: {e}")
-            using_tribe = False
-    else:
-        print("[*] Running in fallback mode (TRIBE v2 not loaded)")
+    # Uncomment below to enable TRIBE v2 (will take 5-10 minutes per video):
+    # if state.model_loaded and state.tribe_model is not None:
+    #     try:
+    #         print(f"[*] Starting TRIBE v2 analysis...")
+    #         loop = asyncio.get_event_loop()
+    #         brain_predictions = await asyncio.wait_for(
+    #             loop.run_in_executor(
+    #                 tribe_executor,
+    #                 lambda: process_video_with_tribe(
+    #                     state.tribe_model, str(video_path)
+    #                 ),
+    #             ),
+    #             timeout=600.0,
+    #         )
+    #         using_tribe = True
+    #         print(f"[*] TRIBE v2 analysis complete!")
+    #     except asyncio.TimeoutError:
+    #         print("[!] TRIBE v2 processing timed out")
+    #         using_tribe = False
+    #     except Exception as e:
+    #         print(f"[!] TRIBE v2 failed: {e}")
+    #         using_tribe = False
+    # else:
+    #     print("[*] Running in fallback mode (TRIBE v2 not loaded)")
 
     # Calculate brain activation level from predictions
     brain_activation = 0.7
     if brain_predictions is not None:
-        brain_activation = (
-            float(brain_predictions.mean()) if len(brain_predictions) > 0 else 0.7
-        )
-        # Normalize to 0-1 range
-        brain_activation = max(0.3, min(0.95, brain_activation + 0.5))
+        try:
+            brain_activation = (
+                float(brain_predictions.mean()) if len(brain_predictions) > 0 else 0.7
+            )
+            # Normalize to 0-1 range
+            brain_activation = max(0.3, min(0.95, brain_activation + 0.5))
+        except:
+            brain_activation = 0.7
 
     # Generate reactions based on persona
     print(f"[*] Generating reactions for persona: {persona}")
