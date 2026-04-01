@@ -49,28 +49,6 @@ const PERSONAS = {
   }
 }
 
-const SAMPLE_REACTIONS = [
-  { type: 'Attention', score: 0.72, confidence: 0.89 },
-  { type: 'Engagement', score: 0.68, confidence: 0.85 },
-  { type: 'Valence', score: 0.65, confidence: 0.82 },
-  { type: 'Arousal', score: 0.58, confidence: 0.78 },
-  { type: 'Memory', score: 0.75, confidence: 0.91 },
-  { type: 'Aesthetics', score: 0.82, confidence: 0.88 },
-  { type: 'Novelty', score: 0.61, confidence: 0.76 },
-  { type: 'Social', score: 0.54, confidence: 0.72 },
-  { type: 'Curiosity', score: 0.69, confidence: 0.84 }
-]
-
-const BRAIN_REGIONS = [
-  { name: 'Frontal', activation: 0.78, color: '#00e6c3' },
-  { name: 'Parietal', activation: 0.65, color: '#00b899' },
-  { name: 'Temporal', activation: 0.72, color: '#1a73e8' },
-  { name: 'Occipital', activation: 0.85, color: '#4d99ff' },
-  { name: 'Cingulate', activation: 0.58, color: '#ff3333' },
-  { name: 'Insula', activation: 0.62, color: '#cc0000' },
-  { name: 'Subcortical', activation: 0.45, color: '#990000' }
-]
-
 function App() {
   const [selectedPersona, setSelectedPersona] = useState('analytical')
   const [uploadedFile, setUploadedFile] = useState(null)
@@ -79,6 +57,7 @@ function App() {
   const [reactions, setReactions] = useState([])
   const [brainRegions, setBrainRegions] = useState([])
   const [insights, setInsights] = useState({})
+  const [analysisResult, setAnalysisResult] = useState(null)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -101,36 +80,37 @@ function App() {
     setAnalysisComplete(false)
   }
 
-  const handleAnalyze = async () => {
-    if (!uploadedFile) return
-    
+  const handleAnalyzeResult = (result) => {
+    // Handle real API result
     setIsAnalyzing(true)
     
-    // Simulate analysis with TRIBE v2
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    // The UploadSection handles the API call, this is called with the result
+    if (result && result.reactions) {
+      // Transform API response to frontend format
+      const transformedReactions = result.reactions.map(r => ({
+        type: r.type,
+        score: r.score,
+        confidence: r.confidence
+      }))
+      
+      const transformedBrainRegions = result.brain_regions.map(r => ({
+        name: r.name,
+        activation: r.activation,
+        color: r.color
+      }))
+      
+      setReactions(transformedReactions)
+      setBrainRegions(transformedBrainRegions)
+      setAnalysisResult(result)
+      setAnalysisComplete(true)
+    }
     
-    // Generate persona-specific reactions
-    const persona = PERSONAS[selectedPersona]
-    const baseReactions = SAMPLE_REACTIONS.map(r => ({
-      ...r,
-      score: Math.min(1, r.score * (0.7 + Math.random() * 0.3) + 
-        (persona.traits[r.type.toLowerCase()] || 0.3) * 0.2),
-      confidence: Math.min(1, r.confidence * (0.9 + Math.random() * 0.1))
-    }))
-    
-    const baseBrain = BRAIN_REGIONS.map(r => ({
-      ...r,
-      activation: Math.min(1, r.activation * (0.6 + Math.random() * 0.4) + 
-        (persona.traits.emotional || 0.5) * 0.2)
-    }))
-    
-    setReactions(baseReactions)
-    setBrainRegions(baseBrain)
     setIsAnalyzing(false)
-    setAnalysisComplete(true)
   }
 
   const generateInsights = () => {
+    if (!reactions || reactions.length === 0) return {}
+    
     const avgEngagement = reactions
       .filter(r => ['Attention', 'Engagement'].includes(r.type))
       .reduce((a, b) => a + b.score, 0) / 2
@@ -148,7 +128,9 @@ function App() {
       emotion: avgEmotion > 0.6 ? 'intense' : avgEmotion > 0.4 ? 'moderate' : 'calm',
       cognitive: avgCognitive > 0.6 ? 'high' : avgCognitive > 0.4 ? 'moderate' : 'low',
       dominant: reactions.sort((a, b) => b.score - a.score)[0]?.type || 'Unknown',
-      retention: reactions.find(r => r.type === 'Memory')?.score || 0
+      retention: reactions.find(r => r.type === 'Memory')?.score || 0,
+      usingTribe: analysisResult?.using_tribe || false,
+      processingTime: analysisResult?.processing_time || 0
     }
   }
 
@@ -180,7 +162,7 @@ function App() {
           <div className="reveal stagger-2 mt-20">
             <UploadSection
               onUpload={handleFileUpload}
-              onAnalyze={handleAnalyze}
+              onAnalyze={handleAnalyzeResult}
               uploadedFile={uploadedFile}
               isAnalyzing={isAnalyzing}
               disabled={!uploadedFile}
@@ -191,6 +173,21 @@ function App() {
         {analysisComplete && (
           <>
             <section className="py-20 px-4 md:px-8 max-w-7xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neural-500/20 text-neural-400 text-sm">
+                  {analysisResult?.using_tribe ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Powered by TRIBE v2 • {analysisResult?.processing_time?.toFixed(1)}s
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      Fallback Mode • {analysisResult?.processing_time?.toFixed(1)}s
+                    </>
+                  )}
+                </div>
+              </div>
               <div className="grid lg:grid-cols-2 gap-12">
                 <div className="reveal">
                   <BrainVisualization regions={brainRegions} />

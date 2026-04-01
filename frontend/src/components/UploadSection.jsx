@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
+import api from '../api'
 
-export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAnalyzing, disabled }) {
+export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAnalyzing, disabled, onProgress }) {
   const [isDragging, setIsDragging] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [processingStage, setProcessingStage] = useState('')
   const fileInputRef = useRef(null)
 
   const handleDragOver = (e) => {
@@ -36,6 +39,43 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
+  const handleAnalyze = async () => {
+    if (!uploadedFile || isAnalyzing) return
+
+    try {
+      setUploadProgress(0)
+      setProcessingStage('uploading')
+
+      // Call the real API
+      const result = await api.analyzeVideo(
+        uploadedFile,
+        'analytical', // Will be overridden by parent
+        (progress) => {
+          setUploadProgress(progress.percent)
+          setProcessingStage(progress.stage)
+          if (onProgress) onProgress(progress)
+        }
+      )
+
+      // Pass result to parent
+      if (onAnalyze) {
+        onAnalyze(result)
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error)
+      alert(`Analysis failed: ${error.message}`)
+    }
+  }
+
+  const getProgressText = () => {
+    if (processingStage === 'uploading') {
+      return `Uploading... ${uploadProgress}%`
+    } else if (processingStage === 'processing') {
+      return 'Processing with TRIBE v2...'
+    }
+    return 'Analyzing Brain Response...'
+  }
+
   return (
     <div id="demo">
       <div className="text-center mb-12">
@@ -44,6 +84,9 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
         </h2>
         <p className="text-gray-400 max-w-xl mx-auto">
           Drop a video to analyze how the selected persona would react to it
+          <span className="block mt-2 text-neural-400 text-sm">
+            Powered by Meta's TRIBE v2 brain encoding model
+          </span>
         </p>
       </div>
 
@@ -114,8 +157,25 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                 </button>
               </div>
 
+              {isAnalyzing && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-400 mb-1">
+                    <span>{getProgressText()}</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-neural-500 to-cortex-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${uploadProgress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <button
-                onClick={onAnalyze}
+                onClick={handleAnalyze}
                 disabled={disabled || isAnalyzing}
                 className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
                   disabled || isAnalyzing
@@ -126,7 +186,7 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                 {isAnalyzing ? (
                   <span className="flex items-center justify-center gap-3">
                     <div className="spinner" />
-                    Analyzing Brain Response...
+                    {getProgressText()}
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
@@ -137,13 +197,19 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                   </span>
                 )}
               </button>
+
+              {isAnalyzing && (
+                <p className="mt-3 text-center text-xs text-gray-500">
+                  This may take a few minutes depending on video length...
+                </p>
+              )}
             </div>
           )}
         </motion.div>
 
         {/* Sample Videos */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600 mb-4">Or try a sample video</p>
+          <p className="text-sm text-gray-600 mb-4">Try with sample content</p>
           <div className="flex flex-wrap justify-center gap-3">
             {['Nature Documentary', 'City Timelapse', 'Concert Footage'].map((sample, i) => (
               <button

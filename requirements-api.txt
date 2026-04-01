@@ -1,0 +1,18 @@
+# TRIBE v2 Persona Predictor - API Server Dependencies
+# Install with: pip install -r requirements-api.txt
+
+# Core dependencies
+torch>=2.5.0
+numpy>=2.0.0
+
+# TRIBE v2 (from GitHub)
+git+https://github.com/facebookresearch/tribev2.git
+
+# FastAPI server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+aiofiles>=23.0.0
+
+# Optional: for video processing optimization
+opencv-python>=4.8.0
