@@ -56,7 +56,7 @@ export default function Header() {
             </a>
           ))}
           <a
-            href="https://github.com/facebookresearch/tribev2"
+            href="https://github.com/Richaansh-bot/tribe-persona-predictor"
             target="_blank"
             rel="noopener noreferrer"
             className="btn-neural px-4 py-2 rounded-lg text-sm font-medium"

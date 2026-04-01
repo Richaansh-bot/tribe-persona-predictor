@@ -23,7 +23,7 @@ export default function Footer() {
           </div>
 
           <div className="flex items-center gap-6 text-sm text-gray-500">
-            <a href="https://github.com/facebookresearch/tribev2" target="_blank" rel="noopener noreferrer" className="hover:text-neural-400 transition-colors">
+            <a href="https://github.com/Richaansh-bot/tribe-persona-predictor" target="_blank" rel="noopener noreferrer" className="hover:text-neural-400 transition-colors">
               GitHub
             </a>
             <a href="https://ai.meta.com/research/publications/a-foundation-model-of-vision-audition-and-language-for-in-silico-neuroscience/" target="_blank" rel="noopener noreferrer" className="hover:text-neural-400 transition-colors">
@@ -35,12 +35,12 @@ export default function Footer() {
           </div>
 
           <div className="text-sm text-gray-600">
-            Built with Meta AI Research
+            Built by Richansh • Powered by TRIBE v2
           </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-gray-800 text-center text-xs text-gray-600">
-          TRIBE v2 is research from Meta AI. This demo is for educational purposes.
+          Powered by Meta's TRIBE v2 brain encoding model • Open source project
         </div>
       </div>
     </footer>
