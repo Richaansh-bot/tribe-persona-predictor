@@ -9,6 +9,7 @@ import asyncio
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +44,55 @@ CACHE_DIR.mkdir(exist_ok=True)
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
 
 # ============================================================================
+# Global state
+# ============================================================================
+
+
+class AppState:
+    tribe_model: Optional["TribeModel"] = None
+    model_loaded: bool = False
+    model_loading: bool = False
+
+
+state = AppState()
+
+# ============================================================================
+# Lifespan context manager (modern FastAPI approach)
+# ============================================================================
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load TRIBE v2 model on startup."""
+    print("=" * 60)
+    print("LOADING TRIBE v2 MODEL...")
+    print("This may take a few minutes on first load...")
+    print("=" * 60)
+
+    if TRIBE_AVAILABLE:
+        try:
+            state.model_loading = True
+            state.tribe_model = TribeModel.from_pretrained(
+                "facebook/tribev2", cache_folder=str(CACHE_DIR)
+            )
+            state.model_loaded = True
+            print("[OK] TRIBE v2 model loaded successfully!")
+            print(f"    Cache folder: {CACHE_DIR}")
+        except Exception as e:
+            print(f"[!] Failed to load TRIBE v2: {e}")
+            print("    Using fallback mode without brain predictions")
+    else:
+        print("[!] TRIBE v2 not installed")
+
+    state.model_loading = False
+
+    yield  # Server is running
+
+    # Cleanup on shutdown (if needed)
+    print("Shutting down TRIBE v2 Persona Predictor API...")
+
+
+# ============================================================================
 # FastAPI App
 # ============================================================================
 
@@ -50,6 +100,7 @@ app = FastAPI(
     title="TRIBE v2 Persona Predictor API",
     description="Real brain response prediction for video content using Meta's TRIBE v2",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS for React frontend
@@ -60,16 +111,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Global state
-class AppState:
-    tribe_model: Optional[TribeModel] = None
-    model_loaded: bool = False
-    model_loading: bool = False
-
-
-state = AppState()
 
 # ============================================================================
 # Models
@@ -243,40 +284,6 @@ def persona_to_reactions(
         )
 
     return reactions
-
-
-# ============================================================================
-# Startup Events
-# ============================================================================
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Load TRIBE v2 model on startup."""
-    if not state.model_loading and not state.model_loaded:
-        state.model_loading = True
-        print("=" * 60)
-        print("LOADING TRIBE v2 MODEL...")
-        print("=" * 60)
-
-        if TRIBE_AVAILABLE:
-            try:
-                state.tribe_model = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: TribeModel.from_pretrained(
-                        "facebook/tribev2", cache_folder=str(CACHE_DIR)
-                    ),
-                )
-                state.model_loaded = True
-                print("[OK] TRIBE v2 model loaded successfully!")
-                print(f"    Cache folder: {CACHE_DIR}")
-            except Exception as e:
-                print(f"[!] Failed to load TRIBE v2: {e}")
-                print("    Using fallback mode without brain predictions")
-        else:
-            print("[!] TRIBE v2 not installed")
-
-        state.model_loading = False
 
 
 # ============================================================================
@@ -512,8 +519,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print("TRIBE v2 PERSONA PREDICTOR - API SERVER")
     print("=" * 60)
-    print(f"Server running on: http://localhost:8000")
-    print(f"API docs: http://localhost:8000/docs")
+    print(f"Server running on: http://localhost:8003")
+    print(f"API docs: http://localhost:8003/docs")
     print("=" * 60)
 
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    uvicorn.run("server:app", host="0.0.0.0", port=8003, reload=False, log_level="info")

@@ -3,7 +3,7 @@
  * Connects React frontend to FastAPI backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8003';
 
 class ApiClient {
   constructor(baseUrl = API_BASE_URL) {
