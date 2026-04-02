@@ -36,7 +36,7 @@ export default function Header() {
           </div>
           <div>
             <h1 className="font-display text-xl font-bold gradient-text-cyan-blue">
-              TRIBE v2
+              TRIBE v2 <span className="text-gray-600 text-sm">by Richansh</span>
             </h1>
             <p className="text-xs text-gray-500 font-mono tracking-wider">
               NEURAL PREDICTOR

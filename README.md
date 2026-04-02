@@ -1,10 +1,12 @@
 # TRIBE v2 Persona Predictor
 
+![Made by Richansh](https://img.shields.io/badge/Made%20by-Richansh-00e6c3?style=for-the-badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-blue.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite)](https://vitejs.dev/)
+[![GitHub Stars](https://img.shields.io/github/stars/Richaansh-bot/tribe-persona-predictor?style=social)](https://github.com/Richaansh-bot/tribe-persona-predictor)
 
 > Predict how different personalities react to content using brain-encoded AI
 
@@ -63,7 +65,7 @@ python demo.py
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/tribe-persona-predictor.git
+git clone https://github.com/Richaansh-bot/tribe-persona-predictor.git
 cd tribe-persona-predictor
 
 # Python dependencies
@@ -236,7 +238,7 @@ tribe-persona-predictor/
 
 ```bash
 # Clone and setup
-git clone https://github.com/YOUR_USERNAME/tribe-persona-predictor.git
+git clone https://github.com/Richaansh-bot/tribe-persona-predictor.git
 cd tribe-persona-predictor
 
 # Python setup
@@ -280,7 +282,7 @@ npm run build
 ```bibtex
 @article{tribePersona2026,
   title={TRIBE v2 Persona Predictor: Brain-Encoded Personality Reactions},
-  author={TRIBE v2 Persona Predictor Contributors},
+  author={Richansh},
   year={2026}
 }
 
@@ -301,5 +303,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - **This Project**: [MIT](LICENSE)
 
 ---
+
+**Made with ❤️ by [Richansh](https://github.com/Richaansh-bot)**
 
 Built with [Meta AI Research](https://ai.meta.com/research/) | Powered by TRIBE v2
