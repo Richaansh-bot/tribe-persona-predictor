@@ -416,9 +416,17 @@ def process_video_with_tribe(tribe_model, video_path: str):
 
 
 @app.post("/api/analyze/video")
-async def analyze_video(file: UploadFile = File(...), persona: str = "analytical"):
+async def analyze_video(
+    file: UploadFile = File(...), persona: str = "analytical", use_tribe: str = "false"
+):
     """Analyze video and predict brain/persona reactions."""
     start_time = time.time()
+
+    # Parse use_tribe parameter
+    use_tribe_mode = use_tribe.lower() == "true"
+
+    if use_tribe_mode:
+        print(f"[*] TRIBE v2 mode requested")
 
     # Validate file
     if not file.filename:
@@ -460,36 +468,36 @@ async def analyze_video(file: UploadFile = File(...), persona: str = "analytical
     brain_predictions = None
     using_tribe = False
 
-    # For now, use fallback mode to return results quickly
-    # TRIBE v2 processing is very slow on CPU (5-10 minutes per video)
-    # TODO: Add async job queue for TRIBE v2 processing
-    print("[*] Using fallback mode for quick response")
-    print("[*] Note: TRIBE v2 processing is slow on CPU - enable for production")
-
-    # Uncomment below to enable TRIBE v2 (will take 5-10 minutes per video):
-    # if state.model_loaded and state.tribe_model is not None:
-    #     try:
-    #         print(f"[*] Starting TRIBE v2 analysis...")
-    #         loop = asyncio.get_event_loop()
-    #         brain_predictions = await asyncio.wait_for(
-    #             loop.run_in_executor(
-    #                 tribe_executor,
-    #                 lambda: process_video_with_tribe(
-    #                     state.tribe_model, str(video_path)
-    #                 ),
-    #             ),
-    #             timeout=600.0,
-    #         )
-    #         using_tribe = True
-    #         print(f"[*] TRIBE v2 analysis complete!")
-    #     except asyncio.TimeoutError:
-    #         print("[!] TRIBE v2 processing timed out")
-    #         using_tribe = False
-    #     except Exception as e:
-    #         print(f"[!] TRIBE v2 failed: {e}")
-    #         using_tribe = False
-    # else:
-    #     print("[*] Running in fallback mode (TRIBE v2 not loaded)")
+    if use_tribe_mode:
+        # Use TRIBE v2 mode (slow but more accurate)
+        if state.model_loaded and state.tribe_model is not None:
+            try:
+                print(f"[*] Starting TRIBE v2 analysis...")
+                loop = asyncio.get_event_loop()
+                brain_predictions = await asyncio.wait_for(
+                    loop.run_in_executor(
+                        tribe_executor,
+                        lambda: process_video_with_tribe(
+                            state.tribe_model, str(video_path)
+                        ),
+                    ),
+                    timeout=600.0,  # 10 minute timeout
+                )
+                using_tribe = True
+                print(f"[*] TRIBE v2 analysis complete!")
+            except asyncio.TimeoutError:
+                print(
+                    "[!] TRIBE v2 processing timed out - falling back to persona mode"
+                )
+                using_tribe = False
+            except Exception as e:
+                print(f"[!] TRIBE v2 failed: {e} - falling back to persona mode")
+                using_tribe = False
+        else:
+            print("[!] TRIBE v2 not loaded - falling back to persona mode")
+    else:
+        # Use fast fallback mode
+        print("[*] Using fast fallback mode (persona-based predictions)")
 
     # Calculate brain activation level from predictions
     brain_activation = 0.7

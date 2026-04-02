@@ -6,6 +6,7 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [processingStage, setProcessingStage] = useState('')
+  const [useTribeMode, setUseTribeMode] = useState(false)
   const fileInputRef = useRef(null)
 
   const handleDragOver = (e) => {
@@ -46,7 +47,7 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
       setUploadProgress(0)
       setProcessingStage('uploading')
 
-      // Call the real API
+      // Call the real API with mode
       const result = await api.analyzeVideo(
         uploadedFile,
         'analytical', // Will be overridden by parent
@@ -54,7 +55,8 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
           setUploadProgress(progress.percent)
           setProcessingStage(progress.stage)
           if (onProgress) onProgress(progress)
-        }
+        },
+        useTribeMode // Pass the mode
       )
 
       // Pass result to parent
@@ -78,16 +80,69 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
 
   return (
     <div id="demo">
-      <div className="text-center mb-12">
+      <div className="text-center mb-8">
         <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
           Upload Your <span className="gradient-text">Content</span>
         </h2>
         <p className="text-gray-400 max-w-xl mx-auto">
           Drop a video to analyze how the selected persona would react to it
-          <span className="block mt-2 text-neural-400 text-sm">
-            Powered by Meta's TRIBE v2 brain encoding model
-          </span>
         </p>
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="max-w-2xl mx-auto mb-8">
+        <div className="flex items-center justify-between bg-gray-900/50 rounded-2xl p-4 border border-gray-800">
+          <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              useTribeMode ? 'bg-purple-500/20' : 'bg-emerald-500/20'
+            }`}>
+              {useTribeMode ? (
+                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              )}
+            </div>
+            <div>
+              <h4 className="font-semibold text-white">
+                {useTribeMode ? 'TRIBE v2 Mode' : 'Fast Mode'}
+              </h4>
+              <p className="text-sm text-gray-500">
+                {useTribeMode 
+                  ? 'Real brain encoding - takes 5-10 min per video' 
+                  : 'Persona-based predictions - results in seconds'}
+              </p>
+            </div>
+          </div>
+          
+          {/* Toggle Switch */}
+          <button
+            onClick={() => setUseTribeMode(!useTribeMode)}
+            className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${
+              useTribeMode ? 'bg-purple-500' : 'bg-gray-700'
+            }`}
+          >
+            <span
+              className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transition-transform duration-300 ${
+                useTribeMode ? 'translate-x-7' : 'translate-x-1'
+              }`}
+            />
+            <span className={`absolute text-xs font-bold top-1 transition-colors duration-300 ${
+              useTribeMode ? 'left-1.5 text-purple-200' : 'right-1.5 text-gray-400'
+            }`}>
+              {useTribeMode ? 'T' : 'F'}
+            </span>
+          </button>
+        </div>
+        
+        {useTribeMode && (
+          <p className="text-center text-amber-400 text-sm mt-3">
+            Warning: TRIBE v2 mode is very slow on CPU. Consider using Fast Mode for quick results.
+          </p>
+        )}
       </div>
 
       <div className="max-w-2xl mx-auto">

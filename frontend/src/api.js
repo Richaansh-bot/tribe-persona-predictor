@@ -60,17 +60,18 @@ class ApiClient {
   }
 
   // Analyze video file
-  async analyzeVideo(file, persona = 'analytical', onProgress = null) {
+  async analyzeVideo(file, persona = 'analytical', onProgress = null, useTribe = false) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('persona', persona);
+    formData.append('use_tribe', useTribe.toString());
 
     // Use XMLHttpRequest for progress tracking with longer timeout
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       
-      // Set timeout to 15 minutes (TRIBE v2 processing can take time)
-      xhr.timeout = 900000; // 15 minutes
+      // Set timeout based on mode (TRIBE v2 takes longer)
+      xhr.timeout = useTribe ? 900000 : 60000; // 15 min for TRIBE, 1 min for fallback
       
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && onProgress) {
