@@ -174,16 +174,20 @@ function App() {
           <>
             <section className="py-20 px-4 md:px-8 max-w-7xl mx-auto">
               <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neural-500/20 text-neural-400 text-sm">
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${
+                  analysisResult?.using_tribe 
+                    ? 'bg-purple-500/20 text-purple-400' 
+                    : 'bg-emerald-500/20 text-emerald-400'
+                }`}>
                   {analysisResult?.using_tribe ? (
                     <>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Powered by TRIBE v2 • {analysisResult?.processing_time?.toFixed(1)}s
+                      <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                      Powered by TRIBE v2 (GPU) • {analysisResult?.processing_time?.toFixed(1)}s
                     </>
                   ) : (
                     <>
-                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                      Fallback Mode • {analysisResult?.processing_time?.toFixed(1)}s
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Enhanced Analysis (CPU) • {analysisResult?.processing_time?.toFixed(1)}s
                     </>
                   )}
                 </div>

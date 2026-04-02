@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import api from '../api'
 
@@ -8,8 +8,18 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
   const [processingStage, setProcessingStage] = useState('')
   const [useTribeMode, setUseTribeMode] = useState(false)
   const [localIsAnalyzing, setLocalIsAnalyzing] = useState(false)
+  const [gpuAvailable, setGpuAvailable] = useState(null)
   const fileInputRef = useRef(null)
   
+  // Check GPU availability on mount
+  useEffect(() => {
+    api.healthCheck().then(data => {
+      setGpuAvailable(data.cuda_available || false)
+    }).catch(() => {
+      setGpuAvailable(false)
+    })
+  }, [])
+
   // Use either external or local analyzing state
   const isAnalyzing = localIsAnalyzing || externalIsAnalyzing
 
@@ -46,6 +56,16 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
 
   const handleAnalyze = async () => {
     if (!uploadedFile || isAnalyzing) return
+
+    // Check GPU if TRIBE mode selected
+    if (useTribeMode && gpuAvailable === false) {
+      const proceed = window.confirm(
+        'TRIBE v2 requires a GPU (CUDA) which is not available on this system.\n\n' +
+        'The analysis will use the enhanced CPU fallback which provides fast, meaningful predictions.\n\n' +
+        'Proceed with CPU fallback?'
+      )
+      if (!proceed) return
+    }
 
     setLocalIsAnalyzing(true)
     setUploadProgress(0)
@@ -116,34 +136,76 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
               </h4>
               <p className="text-sm text-gray-500">
                 {useTribeMode 
-                  ? 'Real brain encoding - takes 5-10 min per video' 
-                  : 'Persona-based predictions - results in seconds'}
+                  ? 'Real brain encoding - requires GPU' 
+                  : 'Persona-based predictions - instant results'}
               </p>
             </div>
           </div>
           
           {/* Toggle Switch */}
-          <button
-            onClick={() => setUseTribeMode(!useTribeMode)}
-            className={`relative w-14 h-8 rounded-full transition-colors duration-300 flex items-center ${
-              useTribeMode ? 'bg-purple-500' : 'bg-gray-700'
-            } ${useTribeMode ? 'pl-7' : 'pr-1'}`}
-            style={{ paddingLeft: useTribeMode ? '28px' : '4px', paddingRight: useTribeMode ? '4px' : '28px' }}
-          >
-            <span
-              className={`w-6 h-6 rounded-full bg-white shadow-lg transition-all duration-300 flex-shrink-0`}
-            />
-            <span className={`absolute text-xs font-bold transition-colors duration-300 ${
-              useTribeMode ? 'left-1.5 text-purple-200' : 'right-1.5 text-gray-400'
-            }`}>
-              {useTribeMode ? 'T' : 'F'}
-            </span>
-          </button>
+          <div className="flex items-center gap-3">
+            {/* GPU Status Badge */}
+            {gpuAvailable !== null && (
+              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+                gpuAvailable 
+                  ? 'bg-emerald-500/20 text-emerald-400' 
+                  : 'bg-gray-700/50 text-gray-400'
+              }`}>
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                </svg>
+                {gpuAvailable ? 'GPU' : 'CPU'}
+              </div>
+            )}
+            
+            <button
+              onClick={() => setUseTribeMode(!useTribeMode)}
+              disabled={gpuAvailable === false}
+              className={`relative w-14 h-8 rounded-full transition-colors duration-300 flex items-center ${
+                useTribeMode ? 'bg-purple-500' : 'bg-gray-700'
+              } ${gpuAvailable === false ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={{ paddingLeft: useTribeMode ? '28px' : '4px', paddingRight: useTribeMode ? '4px' : '28px' }}
+            >
+              <span
+                className={`w-6 h-6 rounded-full bg-white shadow-lg transition-all duration-300 flex-shrink-0`}
+              />
+              <span className={`absolute text-xs font-bold transition-colors duration-300 ${
+                useTribeMode ? 'left-1.5 text-purple-200' : 'right-1.5 text-gray-400'
+              }`}>
+                {useTribeMode ? 'T' : 'F'}
+              </span>
+            </button>
+          </div>
         </div>
         
-        {useTribeMode && (
-          <p className="text-center text-amber-400 text-sm mt-3">
-            Warning: TRIBE v2 mode is very slow on CPU. Consider using Fast Mode for quick results.
+        {/* Status Messages */}
+        {gpuAvailable === false && (
+          <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p className="text-amber-400 font-medium text-sm">
+                  GPU not detected - TRIBE v2 unavailable
+                </p>
+                <p className="text-amber-400/70 text-xs mt-1">
+                  TRIBE v2 requires CUDA-compatible GPU. Using <span className="text-emerald-400 font-medium">Fast Mode</span> with enhanced CPU analysis for instant, meaningful predictions.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {useTribeMode && gpuAvailable === true && (
+          <p className="text-center text-purple-400 text-sm mt-3">
+            TRIBE v2 Mode: Real brain encoding using Facebook's TRIBE v2 model
+          </p>
+        )}
+        
+        {useTribeMode && gpuAvailable === null && (
+          <p className="text-center text-gray-500 text-sm mt-3 animate-pulse">
+            Checking GPU availability...
           </p>
         )}
       </div>
@@ -219,14 +281,14 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                 <div className="mb-4 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${useTribeMode ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`} />
+                      <div className={`w-3 h-3 rounded-full ${useTribeMode && gpuAvailable ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`} />
                       <span className="text-sm font-medium text-white">
                         {processingStage === 'uploading' ? 'Uploading video...' : 
-                         processingStage === 'processing' ? 'Processing with TRIBE v2...' : 
-                         useTribeMode ? 'TRIBE v2 Brain Encoding...' : 'Analyzing...'}
+                         processingStage === 'processing' ? 'Processing...' : 
+                         useTribeMode && gpuAvailable ? 'TRIBE v2 Brain Encoding...' : 'Analyzing...'}
                       </span>
                     </div>
-                    <span className={`text-sm font-mono ${useTribeMode ? 'text-purple-400' : 'text-emerald-400'}`}>
+                    <span className={`text-sm font-mono ${useTribeMode && gpuAvailable ? 'text-purple-400' : 'text-emerald-400'}`}>
                       {uploadProgress}%
                     </span>
                   </div>
@@ -234,7 +296,7 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                   {/* Progress bar */}
                   <div className="h-3 bg-gray-800 rounded-full overflow-hidden mb-3">
                     <motion.div
-                      className={`h-full ${useTribeMode ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}
+                      className={`h-full ${useTribeMode && gpuAvailable ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${uploadProgress}%` }}
                       transition={{ duration: 0.5 }}
@@ -250,7 +312,7 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                   </div>
                   
                   {/* Time estimate for TRIBE mode */}
-                  {useTribeMode && uploadProgress < 100 && (
+                  {useTribeMode && gpuAvailable && uploadProgress < 100 && (
                     <p className="text-xs text-gray-500 mt-2 text-center">
                       TRIBE v2 mode: May take 5-10 minutes depending on video length
                     </p>
@@ -264,7 +326,7 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                 className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
                   disabled || isAnalyzing
                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                    : useTribeMode 
+                    : useTribeMode && gpuAvailable
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg hover:shadow-purple-500/25'
                       : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-500/25'
                 }`}
@@ -272,14 +334,14 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                 {isAnalyzing ? (
                   <span className="flex items-center justify-center gap-3">
                     <div className="spinner" />
-                    {useTribeMode ? 'TRIBE v2 Processing...' : 'Analyzing...'}
+                    {useTribeMode && gpuAvailable ? 'TRIBE v2 Processing...' : 'Analyzing...'}
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
-                    {useTribeMode ? 'Analyze with TRIBE v2' : 'Analyze with Fast Mode'}
+                    {useTribeMode && gpuAvailable ? 'Analyze with TRIBE v2' : 'Analyze with Fast Mode'}
                   </span>
                 )}
               </button>
