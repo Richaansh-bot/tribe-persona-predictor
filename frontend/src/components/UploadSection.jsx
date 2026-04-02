@@ -2,12 +2,16 @@ import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import api from '../api'
 
-export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAnalyzing, disabled, onProgress }) {
+export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAnalyzing: externalIsAnalyzing, disabled, onProgress }) {
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [processingStage, setProcessingStage] = useState('')
   const [useTribeMode, setUseTribeMode] = useState(false)
+  const [localIsAnalyzing, setLocalIsAnalyzing] = useState(false)
   const fileInputRef = useRef(null)
+  
+  // Use either external or local analyzing state
+  const isAnalyzing = localIsAnalyzing || externalIsAnalyzing
 
   const handleDragOver = (e) => {
     e.preventDefault()
@@ -43,28 +47,30 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
   const handleAnalyze = async () => {
     if (!uploadedFile || isAnalyzing) return
 
-    try {
-      setUploadProgress(0)
-      setProcessingStage('uploading')
+    setLocalIsAnalyzing(true)
+    setUploadProgress(0)
+    setProcessingStage('uploading')
 
-      // Call the real API with mode
+    try {
       const result = await api.analyzeVideo(
         uploadedFile,
-        'analytical', // Will be overridden by parent
+        'analytical',
         (progress) => {
           setUploadProgress(progress.percent)
           setProcessingStage(progress.stage)
           if (onProgress) onProgress(progress)
         },
-        useTribeMode // Pass the mode
+        useTribeMode
       )
 
-      // Pass result to parent
       if (onAnalyze) {
         onAnalyze(result)
       }
+      
+      setLocalIsAnalyzing(false)
     } catch (error) {
       console.error('Analysis failed:', error)
+      setLocalIsAnalyzing(false)
       alert(`Analysis failed: ${error.message}`)
     }
   }
