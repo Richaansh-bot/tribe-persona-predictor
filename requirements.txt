@@ -1,21 +1,13 @@
-{
-  "name": "tribev2-persona-predictor",
-  "version": "0.1.0",
-  "description": "Persona-based brain reaction predictor built on Meta's TRIBE v2",
-  "requiresPython": ">=3.9",
-  "dependencies": {
-    "torch": ">=2.0.0",
-    "numpy": ">=1.24.0",
-    "tribev2": ">=0.1.0"
-  },
-  "extras": {
-    "dev": {
-      "pytest": ">=7.0.0",
-      "jupyter": ">=1.0.0"
-    },
-    "visualization": {
-      "matplotlib": ">=3.7.0",
-      "plotly": ">=5.15.0"
-    }
-  }
-}
+# TRIBE Persona Predictor - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Web Framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+aiofiles>=23.0.0
+
+# PyTorch (CPU version - works on all machines)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0

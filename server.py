@@ -490,6 +490,17 @@ async def process_video_with_tribe_subprocess(
     if not CUDA_AVAILABLE:
         print("[!] TRIBE v2 requires CUDA/GPU. Skipping.")
         return None
+    
+    # Check GPU memory
+    try:
+        import torch
+        gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        free_memory_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        if gpu_memory_gb < 10:
+            print(f"[!] TRIBE v2 requires ~10GB VRAM. Found {gpu_memory_gb:.1f}GB. Using CPU fallback.")
+            return None
+    except:
+        pass
 
     temp_result = tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, dir=str(UPLOAD_DIR)
@@ -498,7 +509,7 @@ async def process_video_with_tribe_subprocess(
     temp_result.close()
 
     try:
-        python_path = Path(sys.executable).parent / "python.exe"
+        python_path = sys.executable  # Use the current Python (works in both Windows and WSL)
 
         print(f"[*] Starting TRIBE v2 subprocess...")
         process = await asyncio.create_subprocess_exec(
@@ -649,6 +660,13 @@ async def analyze_video(
     persona: str = Form("analytical"),
     use_tribe: str = Form("false"),
 ):
+    # Force CPU mode via environment variable
+    force_cpu = os.environ.get("FORCE_CPU_MODE", "true").lower() == "true"
+    if force_cpu:
+        use_tribe = "false"
+    
+    start_time = time.time()
+    use_tribe_mode = use_tribe.lower() == "true"
     start_time = time.time()
     use_tribe_mode = use_tribe.lower() == "true"
 

@@ -12,19 +12,15 @@
 
 TRIBE v2 Persona Predictor combines Meta's TRIBE v2 brain encoding model with personality-based prediction to forecast how users with different traits will respond to video, audio, and text content.
 
-![Neural Interface Preview](https://via.placeholder.com/800x400/050508/00e6c3?text=TRIBE+v2+Persona+Predictor)
+## Quick Start (Windows)
 
-## Table of Contents
+1. **Double-click `SETUP.bat`** - Installs all dependencies automatically
+2. **Double-click `START.bat`** - Launches the application
+3. **Open http://localhost:5173** in your browser
 
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Architecture](#architecture)
-- [API Reference](#api-reference)
-- [Development](#development)
-- [Resources](#resources)
-- [License](#license)
+That's it! The application runs in CPU mode by default (fast and reliable).
+
+## Features
 
 ## Features
 
@@ -42,42 +38,38 @@ TRIBE v2 Persona Predictor combines Meta's TRIBE v2 brain encoding model with pe
 - Python backend + React frontend
 - Responsive neural interface design
 
-## Quick Start
+## Installation
 
-### Frontend Demo (Recommended)
+### Option 1: One-Click Setup (Recommended)
+
+1. Download the project
+2. Double-click `SETUP.bat` - Automatically installs all dependencies
+3. Double-click `START.bat` - Launches the application
+4. Open http://localhost:5173
+
+### Option 2: Manual Setup
 
 ```bash
+# 1. Install Python dependencies
+pip install -r requirements.txt
+
+# 2. Install frontend dependencies
 cd frontend
 npm install
-npm run dev
+cd ..
+
+# 3. Start the application
+START.bat
 ```
 
-Open [http://localhost:5173](http://localhost:5173)
+### GPU Mode (Optional - Requires NVIDIA GPU with 10GB+ VRAM)
 
-### Python Demo
+For GPU acceleration with TRIBE v2:
+1. Install WSL: `wsl --install` (in PowerShell as Admin)
+2. Run `SETUP_WSL.bat`
+3. Start WSL and run: `bash tribev2_wsl.sh`
 
-```bash
-pip install torch numpy
-python demo.py
-```
-
-### Full Installation
-
-```bash
-# Clone repository
-git clone https://github.com/Richaansh-bot/tribe-persona-predictor.git
-cd tribe-persona-predictor
-
-# Python dependencies
-pip install torch numpy
-pip install tribev2  # Optional, for full TRIBE v2
-
-# Frontend dependencies
-cd frontend && npm install && cd ..
-
-# Run demos
-python demo.py
-```
+Note: GPU mode requires an NVIDIA GPU with at least 10GB VRAM.
 
 ## Usage
 

@@ -1,98 +1,83 @@
 @echo off
-title TRIBE v2 Persona Predictor
+setlocal EnableDelayedExpansion
+title TRIBE Persona Predictor
 color 0A
 
 echo.
-echo  ================================================
-echo    TRIBE v2 Persona Predictor - Startup
-echo  ================================================
+echo  ================================================================
+echo     TRIBE Persona Predictor - Starting
+echo  ================================================================
 echo.
-
-:: Check if Python is available
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Python not found! Please install Python 3.11+
-    echo Download from: https://www.python.org/downloads/
-    pause
-    exit /b 1
-)
 
 :: Set project directory
 set PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
 
-:: Check if virtual environment exists
-if not exist "tribev2_env\Scripts\python.exe" (
-    echo [WARNING] Virtual environment not found at tribev2_env
-    echo Creating new virtual environment...
-    python -m venv tribev2_env
-    echo [OK] Virtual environment created
+:: ============================================================================
+:: Step 1: Check Python
+:: ============================================================================
+echo [1/3] Checking Python...
+
+where python >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Python not found!
+    echo Please run SETUP.bat first to install dependencies.
+    pause
+    exit /b 1
 )
 
-:: Activate virtual environment
-echo [1/3] Activating Python environment...
-call tribev2_env\Scripts\activate.bat
+:: ============================================================================
+:: Step 2: Activate Virtual Environment or System Python
+:: ============================================================================
+echo [2/3] Setting up Python environment...
 
-:: Check CUDA availability
-echo.
-echo [INFO] Checking GPU/CUDA availability...
-python -c "import torch; print(f'CUDA Available: {torch.cuda.is_available()}')" 2>nul
-if errorlevel 1 (
-    echo [INFO] Running in CPU mode
+if exist "venv\Scripts\activate.bat" (
+    echo     Using virtual environment...
+    call venv\Scripts\activate.bat
 ) else (
-    python -c "import torch; exit(0 if torch.cuda.is_available() else 1)" 2>nul
-    if not errorlevel 1 (
-        echo [OK] GPU detected! TRIBE v2 mode available
-    ) else (
-        echo [INFO] No GPU found - using Fast Mode
-    )
+    echo     Using system Python...
 )
 
-:: Install dependencies if needed
+:: ============================================================================
+:: Step 3: Start Backend
+:: ============================================================================
+echo [3/3] Starting servers...
 echo.
-echo [2/3] Checking dependencies...
-pip show fastapi >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] Installing dependencies...
-    pip install -r requirements-api.txt
-)
 
-:: Start the backend server
-echo.
-echo [3/3] Starting Backend API Server...
-echo    API: http://localhost:8003
-echo    Docs: http://localhost:8003/docs
-echo.
-start "TRIBE Backend" cmd /k "python -m uvicorn server:app --host 0.0.0.0 --port 8003"
+:: Start backend in new window
+start "TRIBE Backend" cmd /k "python -m uvicorn server:app --host 0.0.0.0 --port 8003 --reload"
 
-:: Wait for server to start
+:: Wait for backend to start
 timeout /t 3 /nobreak >nul
 
-:: Start the frontend dev server
-echo.
-echo Starting Frontend Dev Server...
+:: Start frontend
 cd frontend
 start "TRIBE Frontend" cmd /k "npm run dev"
+cd ..
 
-:: Wait for frontend to start
-timeout /t 5 /nobreak >nul
+:: Wait for frontend
+timeout /t 3 /nobreak >nul
 
 :: Open browser
-echo.
-echo ================================================
-echo    All services started!
-echo ================================================
-echo.
-echo    Backend API: http://localhost:8003
-echo    Frontend:    http://localhost:5173
-echo.
-echo    Press any key to open browser...
-pause >nul
-
 start http://localhost:5173
 
+:: ============================================================================
+:: Done
+:: ============================================================================
 echo.
-echo [OK] Servers are running in background windows
-echo    Close those windows to stop the servers
+echo ================================================================
+echo     All services started!
+echo ================================================================
 echo.
-pause
+echo     Frontend:    http://localhost:5173
+echo     Backend:     http://localhost:8003
+echo     API Docs:    http://localhost:8003/docs
+echo.
+echo     Close this window to stop the servers.
+echo.
+echo ================================================================
+echo.
+
+:: Close this window after a delay
+timeout /t 5 /nobreak >nul
+exit
