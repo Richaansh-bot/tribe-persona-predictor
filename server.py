@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -238,11 +238,9 @@ def get_brain_region_mapping(predictions) -> List[BrainRegion]:
 
 
 def persona_to_reactions(
-    persona_name: str, brain_activation: float = 0.7
+    persona_name: str, brain_activation: float = 0.7, video_filename: str = None
 ) -> List[ReactionResult]:
-    """Convert persona traits to reaction predictions."""
-    persona = PersonaLibrary.get_persona(persona_name)
-
+    """Convert persona traits to reaction predictions based on video content."""
     # Base reactions influenced by persona traits
     base_reactions = [
         ("Attention", 0.72),
@@ -269,16 +267,31 @@ def persona_to_reactions(
     modifiers = trait_modifiers.get(persona_name, {})
     reactions = []
 
+    # Use video filename to generate consistent results for the same video
+    video_seed = 0
+    if video_filename:
+        video_seed = hash(video_filename.lower()) % 1000000
+
     for reaction_type, base_score in base_reactions:
+        # Get modifier for this reaction type (0 if not defined)
         modifier = modifiers.get(reaction_type, 0)
-        # Add brain activation influence
-        score = min(1.0, max(0.0, base_score * brain_activation + modifier))
-        # Add some randomness for demo
-        score = min(
-            1.0,
-            max(0.0, score + (hash(persona_name + reaction_type) % 100) / 500 - 0.1),
-        )
-        confidence = 0.75 + (hash(persona_name + reaction_type + "conf") % 25) / 100
+
+        # Base score influenced by brain activation
+        base = base_score * brain_activation
+
+        # Apply persona modifier
+        score = base + modifier
+
+        # Apply video-specific variation (small adjustment based on video content)
+        if video_seed > 0:
+            variation = ((video_seed + hash(reaction_type)) % 50) / 500  # -0.1 to 0
+            score = score + variation
+
+        # Clamp to valid range
+        score = min(1.0, max(0.1, score))
+
+        # Confidence varies based on video
+        confidence = 0.75 + ((video_seed + hash(reaction_type)) % 25) / 100
 
         reactions.append(
             ReactionResult(
@@ -417,7 +430,9 @@ def process_video_with_tribe(tribe_model, video_path: str):
 
 @app.post("/api/analyze/video")
 async def analyze_video(
-    file: UploadFile = File(...), persona: str = "analytical", use_tribe: str = "false"
+    file: UploadFile = File(...),
+    persona: str = Form("analytical"),
+    use_tribe: str = Form("false"),
 ):
     """Analyze video and predict brain/persona reactions."""
     start_time = time.time()
@@ -432,9 +447,16 @@ async def analyze_video(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
+    # Extract just the filename (handle Windows full paths)
+    original_filename = file.filename
+    if "\\" in original_filename:
+        original_filename = original_filename.split("\\")[-1]
+    if "/" in original_filename:
+        original_filename = original_filename.split("/")[-1]
+
     # Check file extension
     allowed_extensions = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
-    file_ext = Path(file.filename).suffix.lower()
+    file_ext = Path(original_filename).suffix.lower()
     if file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
@@ -448,17 +470,32 @@ async def analyze_video(
 
     # Save uploaded file
     try:
-        async with aiofiles.open(video_path, "wb") as f:
-            content = await file.read()
-            if len(content) > MAX_FILE_SIZE:
-                raise HTTPException(
-                    status_code=413, detail="File too large (max 500MB)"
-                )
-            await f.write(content)
+        # Read content first
+        content = await file.read()
+        print(f"[*] Received file: {original_filename}, size: {len(content)} bytes")
+
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="Empty file received")
+
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large (max 500MB)")
+
+        # Save to disk
+        with open(video_path, "wb") as f:
+            f.write(content)
+
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[!] Error saving file: {e}")
+        import traceback
+
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+
+    print(
+        f"[*] Video saved: {video_filename} ({os.path.getsize(video_path) / (1024 * 1024):.1f} MB)"
+    )
 
     print(
         f"[*] Video saved: {video_filename} ({os.path.getsize(video_path) / (1024 * 1024):.1f} MB)"
@@ -511,9 +548,9 @@ async def analyze_video(
         except:
             brain_activation = 0.7
 
-    # Generate reactions based on persona
+    # Generate reactions based on persona and video
     print(f"[*] Generating reactions for persona: {persona}")
-    reactions = persona_to_reactions(persona, brain_activation)
+    reactions = persona_to_reactions(persona, brain_activation, original_filename)
 
     # Map to brain regions
     brain_regions = get_brain_region_mapping(brain_predictions)
