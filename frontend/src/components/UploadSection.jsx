@@ -70,12 +70,10 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
   }
 
   const getProgressText = () => {
-    if (processingStage === 'uploading') {
-      return `Uploading... ${uploadProgress}%`
-    } else if (processingStage === 'processing') {
-      return 'Processing with TRIBE v2...'
-    }
-    return 'Analyzing Brain Response...'
+    if (uploadProgress < 30) return 'Uploading video...'
+    if (uploadProgress < 60) return useTribeMode ? 'Extracting video features...' : 'Analyzing content...'
+    if (uploadProgress < 90) return useTribeMode ? 'TRIBE v2 brain encoding...' : 'Generating predictions...'
+    return 'Finalizing results...'
   }
 
   return (
@@ -121,16 +119,15 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
           {/* Toggle Switch */}
           <button
             onClick={() => setUseTribeMode(!useTribeMode)}
-            className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${
+            className={`relative w-14 h-8 rounded-full transition-colors duration-300 flex items-center ${
               useTribeMode ? 'bg-purple-500' : 'bg-gray-700'
-            }`}
+            } ${useTribeMode ? 'pl-7' : 'pr-1'}`}
+            style={{ paddingLeft: useTribeMode ? '28px' : '4px', paddingRight: useTribeMode ? '4px' : '28px' }}
           >
             <span
-              className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transition-transform duration-300 ${
-                useTribeMode ? 'translate-x-7' : 'translate-x-1'
-              }`}
+              className={`w-6 h-6 rounded-full bg-white shadow-lg transition-all duration-300 flex-shrink-0`}
             />
-            <span className={`absolute text-xs font-bold top-1 transition-colors duration-300 ${
+            <span className={`absolute text-xs font-bold transition-colors duration-300 ${
               useTribeMode ? 'left-1.5 text-purple-200' : 'right-1.5 text-gray-400'
             }`}>
               {useTribeMode ? 'T' : 'F'}
@@ -213,19 +210,45 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
               </div>
 
               {isAnalyzing && (
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-400 mb-1">
-                    <span>{getProgressText()}</span>
-                    <span>{uploadProgress}%</span>
+                <div className="mb-4 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${useTribeMode ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`} />
+                      <span className="text-sm font-medium text-white">
+                        {processingStage === 'uploading' ? 'Uploading video...' : 
+                         processingStage === 'processing' ? 'Processing with TRIBE v2...' : 
+                         useTribeMode ? 'TRIBE v2 Brain Encoding...' : 'Analyzing...'}
+                      </span>
+                    </div>
+                    <span className={`text-sm font-mono ${useTribeMode ? 'text-purple-400' : 'text-emerald-400'}`}>
+                      {uploadProgress}%
+                    </span>
                   </div>
-                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                  
+                  {/* Progress bar */}
+                  <div className="h-3 bg-gray-800 rounded-full overflow-hidden mb-3">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-neural-500 to-cortex-500"
+                      className={`h-full ${useTribeMode ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${uploadProgress}%` }}
-                      transition={{ duration: 0.3 }}
+                      transition={{ duration: 0.5 }}
                     />
                   </div>
+                  
+                  {/* Stage indicators */}
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span className={uploadProgress >= 10 ? 'text-gray-400' : ''}>Upload</span>
+                    <span className={uploadProgress >= 30 ? 'text-gray-400' : ''}>Extract</span>
+                    <span className={uploadProgress >= 60 ? 'text-gray-400' : ''}>Analyze</span>
+                    <span className={uploadProgress >= 90 ? 'text-gray-400' : ''}>Complete</span>
+                  </div>
+                  
+                  {/* Time estimate for TRIBE mode */}
+                  {useTribeMode && uploadProgress < 100 && (
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      TRIBE v2 mode: May take 5-10 minutes depending on video length
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -235,20 +258,22 @@ export default function UploadSection({ onUpload, onAnalyze, uploadedFile, isAna
                 className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
                   disabled || isAnalyzing
                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-neural-600 to-cortex-600 text-white hover:shadow-lg hover:shadow-neural-500/25'
+                    : useTribeMode 
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg hover:shadow-purple-500/25'
+                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-500/25'
                 }`}
               >
                 {isAnalyzing ? (
                   <span className="flex items-center justify-center gap-3">
                     <div className="spinner" />
-                    {getProgressText()}
+                    {useTribeMode ? 'TRIBE v2 Processing...' : 'Analyzing...'}
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
-                    Analyze with TRIBE v2
+                    {useTribeMode ? 'Analyze with TRIBE v2' : 'Analyze with Fast Mode'}
                   </span>
                 )}
               </button>

@@ -73,14 +73,44 @@ class ApiClient {
       // Set timeout based on mode (TRIBE v2 takes longer)
       xhr.timeout = useTribe ? 900000 : 60000; // 15 min for TRIBE, 1 min for fallback
       
+      // Progress stages for TRIBE v2 mode
+      let progressInterval;
+      let currentStage = 'uploading';
+      
+      // Simulate progress for TRIBE v2 mode (since we can't get real progress from server)
+      if (useTribe) {
+        currentStage = 'uploading';
+        onProgress({ stage: 'uploading', percent: 0 });
+        
+        // Simulate upload progress
+        let fakeProgress = 0;
+        progressInterval = setInterval(() => {
+          fakeProgress += 2;
+          if (fakeProgress < 30) {
+            currentStage = 'uploading';
+            onProgress({ stage: 'uploading', percent: fakeProgress });
+          } else if (fakeProgress < 60) {
+            currentStage = 'extracting';
+            onProgress({ stage: 'extracting', percent: fakeProgress });
+          } else if (fakeProgress < 90) {
+            currentStage = 'analyzing';
+            onProgress({ stage: 'analyzing', percent: fakeProgress });
+          }
+        }, 2000);
+      }
+      
       xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && onProgress) {
+        if (e.lengthComputable && onProgress && !useTribe) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
           onProgress({ stage: 'uploading', percent: percentComplete });
         }
       });
 
       xhr.addEventListener('load', () => {
+        // Clear progress interval
+        if (progressInterval) clearInterval(progressInterval);
+        if (useTribe) onProgress({ stage: 'complete', percent: 100 });
+        
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const result = JSON.parse(xhr.responseText);
@@ -99,14 +129,17 @@ class ApiClient {
       });
 
       xhr.addEventListener('error', () => {
+        if (progressInterval) clearInterval(progressInterval);
         reject(new Error('Network error during upload'));
       });
 
       xhr.addEventListener('abort', () => {
+        if (progressInterval) clearInterval(progressInterval);
         reject(new Error('Upload cancelled'));
       });
 
       xhr.addEventListener('timeout', () => {
+        if (progressInterval) clearInterval(progressInterval);
         reject(new Error('Analysis timed out. Video may be too long or TRIBE v2 processing is taking too long.'));
       });
 
